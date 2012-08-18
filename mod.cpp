@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.56"
+#define MYVERSION "0.9.9.57"
 
 /*
 	changelog
+
+2012-08-18 23:05 UTC - kode54
+- Fixed SSE resonant filter function using uninitialized variables
+- Version is now 0.9.9.57
 
 2012-08-07 04:32 UTC - kode54
 - Fixed XM sample header size handling to always assume a size of 0x28
