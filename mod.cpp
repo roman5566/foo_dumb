@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.57"
+#define MYVERSION "0.9.9.58"
 
 /*
 	changelog
+
+2012-09-02 19:53 UTC - kode54
+- Fixed most effects applying to background voices
+- Version is now 0.9.9.58
 
 2012-08-18 23:05 UTC - kode54
 - Fixed SSE resonant filter function using uninitialized variables
