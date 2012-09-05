@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.58"
+#define MYVERSION "0.9.9.59"
 
 /*
 	changelog
+
+2012-09-05 00:00 UTC - kode54
+- Implemented internal database tag storage
+- Version is now 0.9.9.59
 
 2012-09-02 19:53 UTC - kode54
 - Fixed most effects applying to background voices
@@ -1027,9 +1031,6 @@ static const GUID guid_cfg_autochip_scan_threshold =
 // {7C7EAEA1-ACFE-4f64-BDC7-5FF416273D3B}
 static const GUID guid_cfg_loop = 
 { 0x7c7eaea1, 0xacfe, 0x4f64, { 0xbd, 0xc7, 0x5f, 0xf4, 0x16, 0x27, 0x3d, 0x3b } };
-// {05916BA0-F8CE-4d84-BEAA-52A341FE82B7}
-static const GUID guid_cfg_tag = 
-{ 0x5916ba0, 0xf8ce, 0x4d84, { 0xbe, 0xaa, 0x52, 0xa3, 0x41, 0xfe, 0x82, 0xb7 } };
 // {74D22B5A-E03C-48da-9A63-53323B8C23A5}
 static const GUID guid_cfg_trim = 
 { 0x74d22b5a, 0xe03c, 0x48da, { 0x9a, 0x63, 0x53, 0x32, 0x3b, 0x8c, 0x23, 0xa5 } };
@@ -1067,7 +1068,6 @@ enum
 	default_cfg_autochip_size_scan = 500,
 	default_cfg_autochip_scan_threshold = 12,
 	default_cfg_loop = 0,
-	default_cfg_tag = 0,
 	default_cfg_trim = 0,
 	default_cfg_multi_value_tags = 0,
 	default_cfg_dynamic_info = 0,
@@ -1086,8 +1086,6 @@ static cfg_int cfg_autochip_size_scan(guid_cfg_autochip_size_scan, default_cfg_a
 static cfg_int cfg_autochip_scan_threshold(guid_cfg_autochip_scan_threshold, default_cfg_autochip_scan_threshold);
 
 static cfg_int cfg_loop(guid_cfg_loop,default_cfg_loop);
-
-static cfg_int cfg_tag(guid_cfg_tag, default_cfg_tag);
 
 static cfg_int cfg_trim(guid_cfg_trim, default_cfg_trim);
 
@@ -1138,6 +1136,7 @@ static const char field_pattern_m[] = "pattern";
 static const char field_channel_m[] = "channel";
 static const char field_comment[] = "comment";
 static const char field_title[] = "title";
+static const char field_hash[] = "mod_hash";
 
 static const char field_dyn_order[] = "mod_dyn_order";
 static const char field_dyn_pattern[] = "mod_dyn_pattern";
@@ -3184,6 +3183,58 @@ public:
 #endif
 #endif
 
+// {A0E37853-491D-4659-A509-F409BE0A9BF4}
+static const GUID guid_mod_index = 
+{ 0xa0e37853, 0x491d, 0x4659, { 0xa5, 0x9, 0xf4, 0x9, 0xbe, 0xa, 0x9b, 0xf4 } };
+
+class metadb_index_client_mod : public metadb_index_client
+{
+	virtual metadb_index_hash transform(const file_info & info, const playable_location & location)
+	{
+		const metadb_index_hash hash_null = 0;
+
+		if ( !g_test_extension( pfc::string_extension( location.get_path() ) ) ) return hash_null;
+
+		hasher_md5_state hasher_state;
+		static_api_ptr_t<hasher_md5> hasher;
+
+		t_uint32 subsong = location.get_subsong();
+
+		hasher->initialize( hasher_state );
+
+		hasher->process( hasher_state, &subsong, sizeof(subsong) );
+		
+		const char * str = info.info_get( field_hash );
+		if ( str ) hasher->process_string( hasher_state, str );
+		else hasher->process_string( hasher_state, location.get_path() );
+
+#define HASH_STRING(s) \
+		str = info.info_get( s ); \
+		if ( str ) hasher->process_string( hasher_state, str );
+
+		HASH_STRING( field_patterns );
+		HASH_STRING( field_orders );
+		HASH_STRING( field_channels );
+		HASH_STRING( field_samples );
+		HASH_STRING( field_instruments );
+		HASH_STRING( field_trackerver );
+		HASH_STRING( field_formatver );
+
+		return from_md5( hasher->get_result( hasher_state ) );
+	}
+};
+
+class initquit_mod : public initquit
+{
+public:
+	void on_init()
+	{
+		static_api_ptr_t<metadb_index_manager>()->add( new service_impl_t<metadb_index_client_mod>, guid_mod_index, 4 * 7 * 24 * 60 * 60 * 10000000 );
+	}
+
+	void on_quit() { }
+};
+
 class input_mod
 {
 	int srate, interp, volramp;
@@ -3215,6 +3266,9 @@ class input_mod
 	pfc::ptr_list_t< dumb_subsong_info > m_subsong_info;
 
 	pfc::array_t< pfc::string8 > m_pattern_titles;
+
+	metadb_index_hash m_index_hash;
+	hasher_md5_result m_file_hash;
 
 	void get_pattern_title( pfc::string_base & p_out, t_uint32 p_pattern )
 	{
@@ -3257,7 +3311,7 @@ public:
 
 	void open( service_ptr_t<file> m_file, const char * p_path, t_input_open_reason p_reason, abort_callback & p_abort )
 	{
-		input_open_file_helper( m_file, p_path, p_reason, p_abort );
+		input_open_file_helper( m_file, p_path, p_reason == input_open_info_write ? input_open_info_read : p_reason, p_abort );
 
 		t_uint8            * ptr;
 		unsigned             size;
@@ -3346,6 +3400,14 @@ public:
 			m_file->read_object( ptr, size, p_abort );
 		}
 		//catch(exception_io const & e) {return e.get_code();}
+
+		hasher_md5_state hasher_state;
+		static_api_ptr_t<hasher_md5> hasher;
+
+		hasher->initialize( hasher_state );
+		hasher->process( hasher_state, ptr, size );
+
+		m_file_hash = hasher->get_result( hasher_state );
 
 		srate = cfg_samplerate;
 		delta = 65536.f / float( srate );
@@ -3447,6 +3509,30 @@ public:
 				get_pattern_title( title, itsd->order[ p_subsong ] );
 				if ( title.length() ) p_info.meta_set( field_title, title );
 			}
+		}
+
+		pfc::string8 hash_string;
+
+		for ( unsigned i = 0; i < 16; i++ ) hash_string += pfc::format_uint( (t_uint8)m_file_hash.m_data[i], 2, 16 );
+
+		p_info.info_set( field_hash, hash_string );
+
+		service_ptr_t<metadb_index_client> index_client = new service_impl_t<metadb_index_client_mod>;
+		m_index_hash = index_client->transform( p_info, playable_location_impl( path, p_subsong ) );
+
+		pfc::array_t<t_uint8> tag;
+		static_api_ptr_t<metadb_index_manager>()->get_user_data_t( guid_mod_index, m_index_hash, tag );
+
+		if ( tag.get_count() )
+		{
+			file::ptr tag_file;
+			filesystem::g_open_tempmem( tag_file, p_abort );
+			tag_file->write_object( tag.get_ptr(), tag.get_count(), p_abort );
+
+			p_info.meta_remove_all();
+
+			tag_processor::read_trailing( tag_file, p_info, p_abort );
+			p_info.info_set( "tagtype", "apev2 db" );
 		}
 	}
 
@@ -3777,20 +3863,18 @@ public:
 
 	void retag_set_info( t_uint32 p_subsong, const file_info & p_info, abort_callback & p_abort )
 	{
-		if ( cfg_tag )
-		{
-			if ( p_subsong > 0 || m_subsong_info.get_count() > 1 ) throw exception_io_unsupported_format();
+		m_info->copy( p_info );
 
-			m_info->copy( p_info );
+		file::ptr tag_file;
+		filesystem::g_open_tempmem( tag_file, p_abort );
+		tag_processor::write_apev2( tag_file, p_info, p_abort );
 
-			tag_processor::write_apev2( m_file, p_info, p_abort );
+		pfc::array_t<t_uint8> tag;
+		tag_file->seek( 0, p_abort );
+		tag.set_count( tag_file->get_size_ex( p_abort ) );
+		tag_file->read_object( tag.get_ptr(), tag.get_count(), p_abort );
 
-			m_stats = m_file->get_stats( p_abort );
-		}
-		else
-		{
-			throw exception_io_unsupported_format();
-		}
+		static_api_ptr_t<metadb_index_manager>()->set_user_data( guid_mod_index, m_index_hash, tag.get_ptr(), tag.get_count() );
 	}
 
 	void retag_commit( abort_callback & p_abort )
@@ -4049,7 +4133,6 @@ BOOL CMyPreferences::OnInitDialog(CWindow, LPARAM) {
 	uSendMessageText(w, CB_ADDSTRING, 0, "XM=lin, else log");
 	::SendMessage(w, CB_SETCURSEL, cfg_volramp, 0);
 
-	SendDlgItemMessage( IDC_TAG, BM_SETCHECK, cfg_tag );
 	SendDlgItemMessage( IDC_TRIM, BM_SETCHECK, cfg_trim );
 	SendDlgItemMessage( IDC_DYNAMIC_INFO, BM_SETCHECK, cfg_dynamic_info );
 	SendDlgItemMessage( IDC_MULTI_VALUE_TAGS, BM_SETCHECK, cfg_multi_value_tags );
@@ -4109,7 +4192,6 @@ void CMyPreferences::reset() {
 	print_time_crap( default_cfg_fade_time, ( char * ) &temp );
 	uSetDlgItemText( m_hWnd, IDC_FADE_TIME, ( char * ) &temp );
 	SendDlgItemMessage( IDC_VOLRAMP, CB_SETCURSEL, default_cfg_volramp );
-	SendDlgItemMessage( IDC_TAG, BM_SETCHECK, default_cfg_tag );
 	SendDlgItemMessage( IDC_TRIM, BM_SETCHECK, default_cfg_trim );
 	SendDlgItemMessage( IDC_DYNAMIC_INFO, BM_SETCHECK, default_cfg_dynamic_info );
 	SendDlgItemMessage( IDC_MULTI_VALUE_TAGS, BM_SETCHECK, default_cfg_multi_value_tags );
@@ -4143,7 +4225,6 @@ void CMyPreferences::apply() {
 		uSetDlgItemText( m_hWnd, IDC_FADE_TIME, ( char * ) &temp );
 	}
 	cfg_volramp = SendDlgItemMessage( IDC_VOLRAMP, CB_GETCURSEL );
-	cfg_tag = SendDlgItemMessage( IDC_TAG, BM_GETCHECK );
 	cfg_trim = SendDlgItemMessage( IDC_TRIM, BM_GETCHECK );
 	cfg_dynamic_info = SendDlgItemMessage( IDC_DYNAMIC_INFO, BM_GETCHECK );
 	cfg_multi_value_tags = SendDlgItemMessage( IDC_MULTI_VALUE_TAGS, BM_GETCHECK );
@@ -4183,7 +4264,6 @@ bool CMyPreferences::HasChanged() {
 	if ( !changed && SendDlgItemMessage( IDC_LOOPS, CB_GETCURSEL ) != cfg_loop ) changed = true;
 	if ( !changed && SendDlgItemMessage( IDC_FADE, BM_GETCHECK ) != cfg_fade ) changed = true;
 	if ( !changed && SendDlgItemMessage( IDC_VOLRAMP, CB_GETCURSEL ) != cfg_volramp ) changed = true;
-	if ( !changed && SendDlgItemMessage( IDC_TAG, BM_GETCHECK ) != cfg_tag ) changed = true;
 	if ( !changed && SendDlgItemMessage( IDC_TRIM, BM_GETCHECK ) != cfg_trim ) changed = true;
 	if ( !changed && SendDlgItemMessage( IDC_DYNAMIC_INFO, BM_GETCHECK ) != cfg_dynamic_info ) changed = true;
 	if ( !changed && SendDlgItemMessage( IDC_MULTI_VALUE_TAGS, BM_GETCHECK ) != cfg_multi_value_tags ) changed = true;
@@ -4610,6 +4690,7 @@ public:
 static input_factory_t           <input_mod>               g_input_mod_factory;
 static preferences_page_factory_t<preferences_page_myimpl> g_config_mod_factory;
 static service_factory_single_t  <mod_file_types>          g_input_file_type_mod_factory;
+static initquit_factory_t        <initquit_mod>            g_initquit_mod_factory;
 //static menu_item_factory_t       <context_mod>             g_menu_item_mod_factory;
 
 DECLARE_COMPONENT_VERSION( "DUMB module decoder", MYVERSION, "Using DUMB v" DUMB_VERSION_STR ",\nwith several modifications.\n\nhttp://dumb.sourceforge.net/");
