@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.62"
+#define MYVERSION "0.9.9.63"
 
 /*
 	changelog
+
+2012-09-09 18:22 UTC - kode54
+- Fixed envelopes so they only carry from the same channel
+- Version is now 0.9.9.63
 
 2012-09-09 16:23 UTC - kode54
 - Reverted previous failed tone portamento fix
