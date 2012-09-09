@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.60"
+#define MYVERSION "0.9.9.61"
 
 /*
 	changelog
+
+2012-09-09 15:17 UTC - kode54
+- Fixed IT tone portamento again
+- Version is now 0.9.9.61
 
 2012-09-09 02:44 UTC - kode54
 - Fixed IT tone portamento so it can continue without a destination note on every row
