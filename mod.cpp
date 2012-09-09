@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.59"
+#define MYVERSION "0.9.9.60"
 
 /*
 	changelog
+
+2012-09-09 02:44 UTC - kode54
+- Fixed IT tone portamento so it can continue without a destination note on every row
+- Version is now 0.9.9.60
 
 2012-09-05 00:00 UTC - kode54
 - Implemented internal database tag storage
