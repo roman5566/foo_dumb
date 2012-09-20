@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.63"
+#define MYVERSION "0.9.9.64"
 
 /*
 	changelog
+
+2012-09-20 03:25 UTC - kode54
+- Fixed pitch slides on non-playing channels
+- Version is now 0.9.9.64
 
 2012-09-09 18:22 UTC - kode54
 - Fixed envelopes so they only carry from the same channel
