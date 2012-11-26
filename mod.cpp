@@ -1,7 +1,12 @@
-#define MYVERSION "0.9.9.64"
+#define MYVERSION "0.9.9.65"
 
 /*
 	changelog
+
+2012-11-26 10:40 UTC - kode54
+- Corrected MOD reader to only check the known number of orders when
+  calculating the pattern count
+- Version is now 0.9.9.65
 
 2012-09-20 03:25 UTC - kode54
 - Fixed pitch slides on non-playing channels
