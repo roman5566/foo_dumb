@@ -1,7 +1,12 @@
-#define MYVERSION "0.9.9.65"
+#define MYVERSION "0.9.9.66"
 
 /*
 	changelog
+
+2012-11-26 11:40 UTC - kode54
+- Added trimming of trailing whitespace to song, instrument, and sample name
+  reading in XM reader
+- Version is now 0.9.9.66
 
 2012-11-26 10:40 UTC - kode54
 - Corrected MOD reader to only check the known number of orders when
