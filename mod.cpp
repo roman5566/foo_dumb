@@ -1,7 +1,13 @@
-#define MYVERSION "0.9.9.66"
+#define MYVERSION "0.9.9.67"
 
 /*
 	changelog
+
+2012-12-04 11:41 UTC - kode54
+- Implemented final solution for MOD pattern count calculation
+- Fixed possible memory leak which only would have occurred with rare MOD files
+- Fixed a possible memory allocation error or crash with FLT8 MOD files
+- Version is now 0.9.9.67
 
 2012-11-26 11:40 UTC - kode54
 - Added trimming of trailing whitespace to song, instrument, and sample name
