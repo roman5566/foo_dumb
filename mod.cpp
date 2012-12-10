@@ -1,7 +1,12 @@
-#define MYVERSION "0.9.9.71"
+#define MYVERSION "0.9.9.72"
 
 /*
 	changelog
+
+2012-12-10 18:05 UTC - kode54
+- Restructured playptmod synthesis loop to better support note pitches above
+  the output sample rate
+- Version is now 0.9.9.72
 
 2012-12-10 09:27 UTC - kode54
 - Fixed playptmod normal PCM sample reading
