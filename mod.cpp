@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.70"
+#define MYVERSION "0.9.9.71"
 
 /*
 	changelog
+
+2012-12-10 09:27 UTC - kode54
+- Fixed playptmod normal PCM sample reading
+- Version is now 0.9.9.71
 
 2012-12-10 07:16 UTC - kode54
 - Fixed MOD ADPCM sample support
