@@ -1,7 +1,13 @@
-#define MYVERSION "0.9.9.72"
+#define MYVERSION "0.9.9.73"
 
 /*
 	changelog
+
+2012-12-10 21:28 UTC - kode54
+- Replaced playptmod BLEP functions with Shay Green's blip_buf.c
+- Corrected real-time song status reported by playptmod
+- Enhanced playptmod song loop detection
+- Version is now 0.9.9.73
 
 2012-12-10 18:05 UTC - kode54
 - Restructured playptmod synthesis loop to better support note pitches above
