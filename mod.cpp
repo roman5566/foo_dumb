@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.69"
+#define MYVERSION "0.9.9.70"
 
 /*
 	changelog
+
+2012-12-10 07:16 UTC - kode54
+- Fixed MOD ADPCM sample support
+- Version is now 0.9.9.70
 
 2012-12-10 05:57 UTC - kode54
 - Fixed MOD pattern count calculation in weird cases where the last sample is
