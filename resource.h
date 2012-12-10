@@ -29,6 +29,9 @@
 #define IDC_CACHE_SIZE                  1022
 #define IDC_CACHE_COUNT                 1023
 #define IDC_CACHE_MEMORY                1024
+#define IDC_PLAYPTMOD_BOX               1025
+#define IDC_PLAYPTMOD                   1026
+#define IDC_PLAYPTMOD_EXRANGE           1027
 #define IDC_OVERRIDE                    1301
 #define IDC_RESET                       1302
 #define IDC_VOICE1                      1303

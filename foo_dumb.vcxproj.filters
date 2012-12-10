@@ -9,6 +9,7 @@
     <ClCompile Include="monitor.cpp">
       <Filter>monitor</Filter>
     </ClCompile>
+    <ClCompile Include="duh_ptmod.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
@@ -17,6 +18,7 @@
     </ClInclude>
     <ClInclude Include="umr.h" />
     <ClInclude Include="urf.h" />
+    <ClInclude Include="duh_ptmod.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="mod.rc" />

@@ -50,10 +50,11 @@ END
 // Dialog
 //
 
-IDD_MOD_CONFIG DIALOGEX 0, 0, 286, 213
+IDD_MOD_CONFIG DIALOGEX 0, 0, 286, 253
 STYLE DS_SETFONT | WS_CHILD
 FONT 8, "Tahoma", 0, 0, 0x0
 BEGIN
+    LTEXT           "Dynamic info fields: order, pattern, row, speed, tempo, channels, channels_max.\nIn scripts: %__mod_dyn_order%, %__mod_dyn_pattern%, etc.",IDC_STATIC,7,212,272,21
     RTEXT           "Sample rate:",IDC_STATIC,25,14,44,8
     COMBOBOX        IDC_SAMPLERATE,72,12,64,130,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
     LTEXT           "Hz",IDC_STATIC,137,14,10,8
@@ -81,14 +82,18 @@ BEGIN
     RTEXT           "delta values greater than",IDC_CHIP_TEXT_4,10,120,83,9
     EDITTEXT        IDC_CHIP_SCAN_THRESHOLD,95,118,42,12,ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "% of the integer range.",IDC_CHIP_TEXT_5,140,120,79,8
-    GROUPBOX        "Sub-song length scanner cache",IDC_STATIC,7,142,272,31
-    RTEXT           "Cache size:",IDC_STATIC,15,156,63,10
-    EDITTEXT        IDC_CACHE_SIZE,82,154,54,12,ES_AUTOHSCROLL | ES_NUMBER
-    RTEXT           "Current size:",IDC_STATIC,143,156,47,10
-    RTEXT           "0",IDC_CACHE_COUNT,201,156,31,10
-    CTEXT           "/",IDC_STATIC,234,156,8,10
-    RTEXT           "0KB",IDC_CACHE_MEMORY,244,156,32,10
-    LTEXT           "Dynamic info fields: order, pattern, row, speed, tempo, channels, channels_max.\nIn scripts: %__mod_dyn_order%, %__mod_dyn_pattern%, etc.",IDC_STATIC,7,183,272,21
+    GROUPBOX        "",IDC_PLAYPTMOD_BOX,7,142,272,29
+    CONTROL         "Use playptmod for MOD and MTM files",IDC_PLAYPTMOD,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,142,133,8
+    CONTROL         "Use extended period range (required for MTM)",IDC_PLAYPTMOD_EXRANGE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,155,163,8
+    GROUPBOX        "Sub-song length scanner cache",IDC_STATIC,7,176,272,31
+    RTEXT           "Cache size:",IDC_STATIC,15,190,63,10
+    EDITTEXT        IDC_CACHE_SIZE,82,188,54,12,ES_AUTOHSCROLL | ES_NUMBER
+    RTEXT           "Current size:",IDC_STATIC,143,190,47,10
+    RTEXT           "0",IDC_CACHE_COUNT,201,190,31,10
+    CTEXT           "/",IDC_STATIC,234,190,8,10
+    RTEXT           "0KB",IDC_CACHE_MEMORY,244,190,32,10
 END
 
 IDD_MONITOR DIALOGEX 0, 0, 149, 164
@@ -195,7 +200,7 @@ BEGIN
         RIGHTMARGIN, 279
         VERTGUIDE, 143
         TOPMARGIN, 7
-        BOTTOMMARGIN, 206
+        BOTTOMMARGIN, 246
     END
 
     IDD_MONITOR, DIALOG

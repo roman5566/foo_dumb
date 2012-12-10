@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.67"
+#define MYVERSION "0.9.9.68"
 
 /*
 	changelog
+
+2012-12-10 03:48 UTC - kode54
+- Implemented support for 8bitbubsy's playptmod for MOD and MTM files
+- Version is now 0.9.9.68
 
 2012-12-04 11:41 UTC - kode54
 - Implemented final solution for MOD pattern count calculation
@@ -1015,6 +1019,9 @@ extern "C" {
 #include "internal/it.h"
 }
 
+#include <playptmod.h>
+#include "duh_ptmod.h"
+
 #include "umr.h"
 
 #include <zlib.h>
@@ -1091,6 +1098,12 @@ static const GUID guid_cfg_multi_value_tags =
 // {B0B8FC4E-3171-4C88-989A-B2F2306364A4}
 static const GUID guid_cfg_cache_size = 
 { 0xb0b8fc4e, 0x3171, 0x4c88, { 0x98, 0x9a, 0xb2, 0xf2, 0x30, 0x63, 0x64, 0xa4 } };
+// {C41180E6-E77C-4C62-9FB2-251996C1C9F6}
+static const GUID guid_cfg_playptmod = 
+{ 0xc41180e6, 0xe77c, 0x4c62, { 0x9f, 0xb2, 0x25, 0x19, 0x96, 0xc1, 0xc9, 0xf6 } };
+// {DC626271-D904-41D6-B0D2-4F3EA44F19BC}
+static const GUID guid_cfg_playptmod_exrange = 
+{ 0xdc626271, 0xd904, 0x41d6, { 0xb0, 0xd2, 0x4f, 0x3e, 0xa4, 0x4f, 0x19, 0xbc } };
 
 enum
 {
@@ -1108,6 +1121,8 @@ enum
 	default_cfg_multi_value_tags = 0,
 	default_cfg_dynamic_info = 0,
 	default_cfg_cache_size = 16384,
+	default_cfg_playptmod = 1,
+	default_cfg_playptmod_exrange = 1,
 };
 
 static cfg_int cfg_samplerate(guid_cfg_samplerate,default_cfg_samplerate);
@@ -1132,6 +1147,9 @@ static cfg_int cfg_multi_value_tags(guid_cfg_multi_value_tags, default_cfg_multi
 static cfg_int cfg_dynamic_info(guid_cfg_dynamic_info, default_cfg_dynamic_info);
 
 static cfg_int cfg_cache_size(guid_cfg_cache_size, default_cfg_cache_size);
+
+static cfg_int cfg_playptmod(guid_cfg_playptmod, default_cfg_playptmod);
+static cfg_int cfg_playptmod_exrange(guid_cfg_playptmod_exrange, default_cfg_playptmod_exrange);
 
 extern "C" void init_cubic(void);
 
@@ -2022,7 +2040,7 @@ void dumb_it_convert_tempos( DUMB_IT_SIGDATA * itsd, bool vsync )
 	}
 }
 
-static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * ext, int & start_order, bool & is_it, bool & is_dos, bool is_vblank)
+static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * ext, int & start_order, bool & is_it, bool & is_dos, bool & is_ptcompat, bool is_vblank)
 {
 	DUH * duh = 0;
 
@@ -2037,6 +2055,7 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 
 	is_it = false;
 	is_dos = true;
+	is_ptcompat = false;
 
 	if (size >= 4 &&
 		ptr[0] == 0xC1 && ptr[1] == 0x83 &&
@@ -2156,6 +2175,7 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 		ptr[0] == 'M' && ptr[1] == 'T' &&
 		ptr[2] == 'M')
 	{
+		is_ptcompat = true;
 		duh = dumb_read_mtm_quick(f);
 	}
 	else if ( size >= 4 &&
@@ -2192,6 +2212,7 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 			DUMB_IT_SIGDATA * itsd = duh_get_it_sigdata( duh );
 			dumb_it_convert_tempos( itsd, true );
 		}
+		if ( duh ) is_ptcompat = true;
 	}
 
 	dumbfile_close(f);
@@ -2565,7 +2586,7 @@ struct dumb_subsong_info
 
 class dumb_info_scanner
 {
-	bool m_is_vblank;
+	bool m_is_vblank, m_is_ptcompat;
 	pfc::ptr_list_t< dumb_subsong_info > m_info;
 
 	struct callback_info
@@ -2589,7 +2610,7 @@ class dumb_info_scanner
 	}
 
 public:
-	dumb_info_scanner() : m_is_vblank(false) {}
+	dumb_info_scanner() : m_is_vblank(false), m_is_ptcompat(false) {}
 	~dumb_info_scanner()
 	{
 		m_info.delete_all();
@@ -2623,7 +2644,7 @@ public:
 				p_abort.check();
 
 				start_order = i;
-				duh = g_open_module( ptr, size, "PSM", start_order, is_it, is_dos, false );
+				duh = g_open_module( ptr, size, "PSM", start_order, is_it, is_dos, m_is_ptcompat, false );
 
 				dumb_subsong_info * song = new dumb_subsong_info;
 
@@ -2640,7 +2661,7 @@ public:
 			callback_info cdata = { m_info, p_abort };
 
 			start_order = 0;
-			duh = g_open_module( ptr, size, ext, start_order, is_it, is_dos, false );
+			duh = g_open_module( ptr, size, ext, start_order, is_it, is_dos, m_is_ptcompat, false );
 
 			start_order = dumb_it_scan_for_playable_orders( duh_get_it_sigdata( duh ), scan_callback, & cdata );
 
@@ -2683,7 +2704,7 @@ public:
 		p_abort.check();
 	}
 
-	void get_info( pfc::ptr_list_t< dumb_subsong_info > & out, bool & is_vblank )
+	void get_info( pfc::ptr_list_t< dumb_subsong_info > & out, bool & is_vblank, bool & is_ptcompat )
 	{
 		for ( unsigned i = 0, j = m_info.get_count(); i < j; ++i )
 		{
@@ -2693,6 +2714,7 @@ public:
 			out.add_item( out_item );
 		}
 		is_vblank = m_is_vblank;
+		is_ptcompat = m_is_ptcompat;
 	}
 };
 
@@ -2703,6 +2725,7 @@ class dumb_info_cache
 		pfc::string_simple                   path;
 		t_filetimestamp                 timestamp;
 		bool                            is_vblank;
+		bool                          is_ptcompat;
 		pfc::ptr_list_t< dumb_subsong_info > info;
 
 		~t_info()
@@ -2725,6 +2748,23 @@ class dumb_info_cache
 
 	void add_item( t_info * item )
 	{
+		for ( t_size i = 0; i < m_cache.get_count(); ++i )
+		{
+			if ( !strcmp( m_cache[ i ]->path, item->path ) )
+			{
+				if ( m_cache[ i ]->timestamp == item->timestamp )
+				{
+					delete item;
+					return;
+				}
+				else
+				{
+					purge_item( i );
+					break;
+				}
+			}
+		}
+
 		m_cache.add_item( item );
 
 		m_cache_count++;
@@ -2749,38 +2789,41 @@ public:
 		m_cache.delete_all();
 	}
 
-	void run( const t_uint8 * ptr, unsigned size, const char * p_path, t_filetimestamp p_timestamp, bool & is_vblank, pfc::ptr_list_t< dumb_subsong_info > & p_out, abort_callback & p_abort )
+	void run( const t_uint8 * ptr, unsigned size, const char * p_path, t_filetimestamp p_timestamp, bool & is_vblank, bool & is_ptcompat, pfc::ptr_list_t< dumb_subsong_info > & p_out, abort_callback & p_abort )
 	{
-		insync( sync );
-
-		for ( unsigned i = 0, j = m_cache.get_count(); i < j; ++i )
 		{
-			t_info * item = m_cache[ i ];
-			if ( ! stricmp_utf8( p_path, item->path ) )
+			insync( sync );
+
+			for ( unsigned i = 0, j = m_cache.get_count(); i < j; ++i )
 			{
-				if ( p_timestamp == item->timestamp )
+				t_info * item = m_cache[ i ];
+				if ( ! strcmp( p_path, item->path ) )
 				{
-					for ( unsigned k = 0, l = item->info.get_count(); k < l; ++k )
+					if ( p_timestamp == item->timestamp )
 					{
-						dumb_subsong_info * in = item->info[ k ];
-						dumb_subsong_info * out_item = new dumb_subsong_info;
-						memcpy( out_item, in, sizeof( *in ) );
-						p_out.add_item( out_item );
-					}
-					is_vblank = item->is_vblank;
+						for ( unsigned k = 0, l = item->info.get_count(); k < l; ++k )
+						{
+							dumb_subsong_info * in = item->info[ k ];
+							dumb_subsong_info * out_item = new dumb_subsong_info;
+							memcpy( out_item, in, sizeof( *in ) );
+							p_out.add_item( out_item );
+						}
+						is_vblank = item->is_vblank;
+						is_ptcompat = item->is_ptcompat;
 
-					if ( i != m_cache.get_count() - 1 )
+						if ( i != m_cache.get_count() - 1 )
+						{
+							m_cache.remove_by_idx( i );
+							m_cache.add_item( item );
+						}
+
+						return;
+					}
+					else
 					{
-						m_cache.remove_by_idx( i );
-						m_cache.add_item( item );
+						purge_item( i );
+						break;
 					}
-
-					return;
-				}
-				else
-				{
-					purge_item( i );
-					break;
 				}
 			}
 		}
@@ -2798,7 +2841,7 @@ public:
 		}
 
 		{
-			scanner.get_info( item->info, item->is_vblank );
+			scanner.get_info( item->info, item->is_vblank, item->is_ptcompat );
 			for ( unsigned i = 0, j = item->info.get_count(); i < j; ++i )
 			{
 				dumb_subsong_info * in = item->info[ i ];
@@ -2807,6 +2850,7 @@ public:
 				p_out.add_item( out_item );
 			}
 			is_vblank = item->is_vblank;
+			is_ptcompat = item->is_ptcompat;
 
 			while ( m_cache.get_count() >= cfg_cache_size )
 			{
@@ -2816,7 +2860,10 @@ public:
 			item->path = p_path;
 			item->timestamp = p_timestamp;
 
-			add_item( item );
+			{
+				insync( sync );
+				add_item( item );
+			}
 		}
 	}
 
@@ -3276,7 +3323,7 @@ class input_mod
 	int srate, interp, volramp;
 	int start_order;
 	float delta;
-	bool no_loop, eof, dynamic_info, read_tag, is_vblank;
+	bool no_loop, eof, dynamic_info, read_tag, is_vblank, is_ptcompat;
 	int dyn_order, dyn_row, dyn_speed, dyn_tempo, dyn_channels, dyn_max_channels;
 	int dyn_pattern;
 	int written;
@@ -3336,7 +3383,7 @@ public:
 		if (buf) destroy_sample_buffer(buf);
 		if (sr)
 		{
-			monitor_stop( duh_get_it_sigrenderer( sr ) );
+			monitor_stop( sr );
 			duh_end_sigrenderer(sr);
 		}
 		if (duh) unload_duh(duh);
@@ -3455,12 +3502,12 @@ public:
 		// OutputDebugString("loading module");
 
 		// subsong magic time
-		g_cache.run( ptr, size, p_path, m_file->get_timestamp( p_abort ), is_vblank, m_subsong_info, p_abort );
+		g_cache.run( ptr, size, p_path, m_file->get_timestamp( p_abort ), is_vblank, is_ptcompat, m_subsong_info, p_abort );
 
 		if ( p_reason == input_open_info_write ) this->m_file = m_file;
 
 		start_order = 0;
-		duh = g_open_module( ( const t_uint8 *& ) ptr, size, extension, start_order, is_it, is_dos, is_vblank );
+		duh = g_open_module( ( const t_uint8 *& ) ptr, size, extension, start_order, is_it, is_dos, is_ptcompat, is_vblank );
 
 		if ( read_tag )
 		{
@@ -3503,7 +3550,7 @@ public:
 				bool dummy;
 				const t_uint8 * ptr = buffer.get_ptr();
 				unsigned size = buffer.get_size();
-				duh = g_open_module( ptr, size, "PSM", start_order, dummy, dummy, false );
+				duh = g_open_module( ptr, size, "PSM", start_order, dummy, dummy, dummy, false );
 				ReadDUH( duh, p_info, !read_tag, true );
 				unload_duh( duh );
 			}
@@ -3583,7 +3630,7 @@ public:
 
 		if ( sr )
 		{
-			monitor_stop( duh_get_it_sigrenderer( sr ) );
+			monitor_stop( sr );
 			duh_end_sigrenderer( sr );
 			sr = NULL;
 		}
@@ -3607,12 +3654,12 @@ public:
 		{
 			const t_uint8 * ptr = buffer.get_ptr();
 			unsigned size = buffer.get_size();
-			duh = g_open_module( ptr, size, extension, start_order, is_it, is_dos, is_vblank );
+			duh = g_open_module( ptr, size, extension, start_order, is_it, is_dos, is_ptcompat, is_vblank );
 		}
 
 		if ( ! open2() ) throw exception_io_data();
 
-		monitor_start( duh_get_it_sigdata( duh ), duh_get_it_sigrenderer( sr ), path );
+		monitor_start( duh_get_it_sigdata( duh ), sr, path );
 
 		eof = false;
 		dynamic_info = !!cfg_dynamic_info;
@@ -3625,6 +3672,22 @@ public:
 private:
 	bool open2( long pos = 0 )
 	{
+		if ( cfg_playptmod && is_ptcompat )
+		{
+			if ( !duh_get_playptmod_sigdata( duh ) &&
+				duh_read_playptmod( duh, buffer.get_ptr(), buffer.get_size() ) ) return false;
+
+			sr = playptmod_start_at_order( duh, start_order, srate );
+			if ( sr )
+			{
+				duh_sigrenderer_set_sigparam( sr, PTMOD_OPTION_CLAMP_PERIODS, !cfg_playptmod_exrange );
+				duh_sigrenderer_set_sigparam( sr, PTMOD_OPTION_VSYNC_TIMING, is_vblank );
+				if ( pos ) duh_sigrenderer_generate_samples( sr, 0., 1.f, pos, 0 );
+			}
+
+			return !!sr;
+		}
+
 		if ( start_order )
 		{
 			sr = dumb_it_start_at_order( duh, 2, start_order );
@@ -3656,16 +3719,26 @@ public:
 
 		if (eof) return false;
 
-		monitor_update( duh_get_it_sigrenderer( sr ) );
+		monitor_update( sr );
 
 		if ( limit_info.fading && fade_time_left == 0 ) return false;
 
 		/*int*/ written=0;
 
-		DUMB_IT_SIGRENDERER * itsr = duh_get_it_sigrenderer( sr );
-		int dt = int( delta * 65536.0f + 0.5f );
-		long samples = long( ( ( (LONG_LONG)itsr->time_left << 16 ) | itsr->sub_time_left ) / dt );
-		if ( ! samples || samples > 2048 ) samples = 2048;
+		long samples;
+		void * ptsr;
+
+		if ( duh_get_playptmod_sigrenderer( sr ) )
+		{
+			samples = 2048;
+		}
+		else
+		{
+			DUMB_IT_SIGRENDERER * itsr = duh_get_it_sigrenderer( sr );
+			int dt = int( delta * 65536.0f + 0.5f );
+			samples = long( ( ( (LONG_LONG)itsr->time_left << 16 ) | itsr->sub_time_left ) / dt );
+			if ( ! samples || samples > 2048 ) samples = 2048;
+		}
 
 		if ( ! buf )
 		{
@@ -3725,16 +3798,16 @@ retry:
 
 		if ( from_pos < 0 ) throw exception_io();
 
-		long to_pos = long( audio_math::time_to_samples( p_seconds, 65536 ) );
+		long to_pos = long( audio_math::time_to_samples( p_seconds, duh_get_playptmod_sigrenderer( sr ) ? srate : 65536 ) );
 
 		if ( to_pos < from_pos )
 		{
-			monitor_stop( duh_get_it_sigrenderer( sr ) );
+			monitor_stop( sr );
 			duh_end_sigrenderer( sr );
 			sr = NULL;
 			limit_info.loop_count = loop_count;
 			if ( ! open2( to_pos ) ) throw exception_io_data();
-			monitor_start( duh_get_it_sigdata( duh ), duh_get_it_sigrenderer( sr ), path );
+			monitor_start( duh_get_it_sigdata( duh ), sr, path );
 		}
 		else while ( to_pos > from_pos && !eof )
 		{
@@ -3755,6 +3828,27 @@ private:
 	{
 		long written = duh_sigrenderer_generate_samples( sr, volume, delta, samples, buffer );
 
+		void * ptsd = duh_get_playptmod_sigrenderer( sr );
+		if ( ptsd )
+		{
+			if ( loop_count != 0 || no_loop )
+			{
+				limit_info.loop_count = ( loop_count <= 0 ? 1 : loop_count ) - playptmod_LoopCounter( ptsd );
+				if ( limit_info.loop_count <= 0 )
+				{
+					if ( limit_info.fade )
+					{
+						limit_info.fading = true;
+					}
+					else
+					{
+						eof = true;
+					}
+				}
+			}
+			return written;
+		}
+
 		if (written < samples)
 		{
 			if (no_loop)
@@ -3769,12 +3863,12 @@ private:
 				{
 					if ( loop_count == 0 || --limit_info.loop_count == 0 )
 					{
-						monitor_stop( duh_get_it_sigrenderer( sr ) );
+						monitor_stop( sr );
 						duh_end_sigrenderer( sr );
 						sr = NULL;
 						if ( open2() )
 						{
-							monitor_start( duh_get_it_sigdata( duh ), duh_get_it_sigrenderer( sr ), path );
+							monitor_start( duh_get_it_sigdata( duh ), sr, path );
 							if ( limit_info.fade )
 							{
 								fade_time_left = fade_time + written;
@@ -3805,86 +3899,135 @@ public:
 		bool ret = false;
 		if ( ( first_block || dynamic_info ) && duh && sr)
 		{
-			DUMB_IT_SIGDATA * itsd = duh_get_it_sigdata(duh);
-			DUMB_IT_SIGRENDERER * itsr = duh_get_it_sigrenderer(sr);
-			if (itsd && itsr)
+			if (first_block)
 			{
-				if (first_block)
-				{
-					p_out.info_set_int( "samplerate", srate );
-					first_block = false;
-					ret = true;
-				}
+				p_out.info_set_int( "samplerate", srate );
+				first_block = false;
+				ret = true;
+			}
 
-				if (dynamic_info)
+			void * ptsr = duh_get_playptmod_sigrenderer( sr );
+			if ( ptsr )
+			{
+				if ( dynamic_info )
 				{
-					if ( m_pattern_titles.get_count() )
+					playptmod_info info;
+					playptmod_GetInfo( ptsr, &info );
+					if (dyn_order != info.order)
 					{
-						int pattern = itsd->order[ itsr->order ];
-						if ( pattern != dyn_pattern )
-						{
-							dyn_pattern = pattern;
-							pfc::string8 new_title;
-							pfc::string8 old_title = p_out.meta_get_count_by_name( field_title ) ? p_out.meta_get( field_title, 0 ) : "";
-							get_pattern_title( new_title, pattern );
-							bool changed = !!strcmp( old_title, new_title );
-							if ( new_title.length() ) p_out.meta_set( field_title, new_title );
-							else p_out.meta_remove_field( field_title );
-							if ( changed ) { p_timestamp_delta = written / double( srate ); ret = true; }
-						}
-					}
-					if (dyn_order != itsr->order)
-					{
-						dyn_order = itsr->order;
+						dyn_order = info.order;
 						p_out.info_set_int(field_dyn_order, dyn_order);
-						if (itsd->order && dyn_order < itsd->n_orders)
-							p_out.info_set_int(field_dyn_pattern, itsd->order[dyn_order]);
+						p_out.info_set_int(field_dyn_pattern, info.pattern);
 						ret = true;
 					}
-					if (dyn_row != itsr->row)
+					if (dyn_row != info.row)
 					{
-						dyn_row = itsr->row;
+						dyn_row = info.row;
 						p_out.info_set_int(field_dyn_row, dyn_row);
 						ret = true;
 					}
-					if (dyn_speed != itsr->speed)
+					if (dyn_speed != info.speed)
 					{
-						dyn_speed = itsr->speed;
+						dyn_speed = info.speed;
 						p_out.info_set_int(field_dyn_speed, dyn_speed);
 						ret = true;
 					}
-					if (dyn_tempo != itsr->tempo)
+					if (dyn_tempo != info.tempo)
 					{
-						dyn_tempo = itsr->tempo;
+						dyn_tempo = info.tempo;
 						p_out.info_set_int(field_dyn_tempo, dyn_tempo);
 						ret = true;
 					}
-					int channels = 0;
-					for (int i = 0; i < DUMB_IT_N_CHANNELS; i++)
+					if (info.channels_playing != dyn_channels)
 					{
-						IT_PLAYING * playing = itsr->channel[i].playing;
-						if (playing && !(playing->flags & IT_PLAYING_DEAD)) channels++;
-					}
-					for (int i = 0; i < DUMB_IT_N_NNA_CHANNELS; i++)
-					{
-						if (itsr->playing[i]) channels++;
-					}
-					if (channels != dyn_channels)
-					{
-						dyn_channels = channels;
+						dyn_channels = info.channels_playing;
 						p_out.info_set_int(field_dyn_channels, dyn_channels);
 						ret = true;
 					}
-					if (channels > dyn_max_channels)
+					if (info.channels_playing > dyn_max_channels)
 					{
-						dyn_max_channels = channels;
+						dyn_max_channels = info.channels_playing;
 						p_out.info_set_int(field_dyn_channels_max, dyn_max_channels);
 						ret = true;
 					}
 				}
-				if (ret) p_timestamp_delta = written / double( srate );
+			}
+			else
+			{
+				DUMB_IT_SIGDATA * itsd = duh_get_it_sigdata(duh);
+				DUMB_IT_SIGRENDERER * itsr = duh_get_it_sigrenderer(sr);
+				if (itsd && itsr)
+				{
+					if (dynamic_info)
+					{
+						if ( m_pattern_titles.get_count() )
+						{
+							int pattern = itsd->order[ itsr->order ];
+							if ( pattern != dyn_pattern )
+							{
+								dyn_pattern = pattern;
+								pfc::string8 new_title;
+								pfc::string8 old_title = p_out.meta_get_count_by_name( field_title ) ? p_out.meta_get( field_title, 0 ) : "";
+								get_pattern_title( new_title, pattern );
+								bool changed = !!strcmp( old_title, new_title );
+								if ( new_title.length() ) p_out.meta_set( field_title, new_title );
+								else p_out.meta_remove_field( field_title );
+								if ( changed ) { p_timestamp_delta = written / double( srate ); ret = true; }
+							}
+						}
+						if (dyn_order != itsr->order)
+						{
+							dyn_order = itsr->order;
+							p_out.info_set_int(field_dyn_order, dyn_order);
+							if (itsd->order && dyn_order < itsd->n_orders)
+								p_out.info_set_int(field_dyn_pattern, itsd->order[dyn_order]);
+							ret = true;
+						}
+						if (dyn_row != itsr->row)
+						{
+							dyn_row = itsr->row;
+							p_out.info_set_int(field_dyn_row, dyn_row);
+							ret = true;
+						}
+						if (dyn_speed != itsr->speed)
+						{
+							dyn_speed = itsr->speed;
+							p_out.info_set_int(field_dyn_speed, dyn_speed);
+							ret = true;
+						}
+						if (dyn_tempo != itsr->tempo)
+						{
+							dyn_tempo = itsr->tempo;
+							p_out.info_set_int(field_dyn_tempo, dyn_tempo);
+							ret = true;
+						}
+						int channels = 0;
+						for (int i = 0; i < DUMB_IT_N_CHANNELS; i++)
+						{
+							IT_PLAYING * playing = itsr->channel[i].playing;
+							if (playing && !(playing->flags & IT_PLAYING_DEAD)) channels++;
+						}
+						for (int i = 0; i < DUMB_IT_N_NNA_CHANNELS; i++)
+						{
+							if (itsr->playing[i]) channels++;
+						}
+						if (channels != dyn_channels)
+						{
+							dyn_channels = channels;
+							p_out.info_set_int(field_dyn_channels, dyn_channels);
+							ret = true;
+						}
+						if (channels > dyn_max_channels)
+						{
+							dyn_max_channels = channels;
+							p_out.info_set_int(field_dyn_channels_max, dyn_max_channels);
+							ret = true;
+						}
+					}
+				}
 			}
 		}
+		if (ret) p_timestamp_delta = written / double( srate );
 		return ret;
 	}
 
@@ -4179,6 +4322,9 @@ BOOL CMyPreferences::OnInitDialog(CWindow, LPARAM) {
 	SetDlgItemInt( IDC_CHIP_SCAN, cfg_autochip_size_scan, FALSE );
 	SetDlgItemInt( IDC_CHIP_SCAN_THRESHOLD, cfg_autochip_scan_threshold, FALSE );
 
+	SendDlgItemMessage( IDC_PLAYPTMOD, BM_SETCHECK, cfg_playptmod, 0 );
+	SendDlgItemMessage( IDC_PLAYPTMOD_EXRANGE, BM_SETCHECK, cfg_playptmod_exrange, 0 );
+
 	SetDlgItemInt( IDC_CACHE_SIZE, cfg_cache_size, FALSE );
 
 	SetWindowLong( DWL_USER, 1 );
@@ -4236,6 +4382,8 @@ void CMyPreferences::reset() {
 	SetDlgItemInt( IDC_CHIP_FORCE, default_cfg_autochip_size_force, FALSE );
 	SetDlgItemInt( IDC_CHIP_SCAN, default_cfg_autochip_size_scan, FALSE );
 	SetDlgItemInt( IDC_CHIP_SCAN_THRESHOLD, default_cfg_autochip_scan_threshold, FALSE );
+	SendDlgItemMessage( IDC_PLAYPTMOD, BM_SETCHECK, default_cfg_playptmod, 0 );
+	SendDlgItemMessage( IDC_PLAYPTMOD_EXRANGE, BM_SETCHECK, default_cfg_playptmod_exrange, 0 );
 	SetDlgItemInt( IDC_CACHE_SIZE, default_cfg_cache_size, FALSE );
 
 	OnChanged();
@@ -4282,6 +4430,8 @@ void CMyPreferences::apply() {
 	else if ( t > 100 ) t = 100;
 	SetDlgItemInt( IDC_CHIP_SCAN_THRESHOLD, t, FALSE );
 	cfg_autochip_scan_threshold = t;
+	cfg_playptmod = SendDlgItemMessage( IDC_PLAYPTMOD, BM_GETCHECK );
+	cfg_playptmod_exrange = SendDlgItemMessage( IDC_PLAYPTMOD_EXRANGE, BM_GETCHECK );
 	t = GetDlgItemInt( IDC_CACHE_SIZE, NULL, FALSE );
 	if ( t < 16 ) t = 16;
 	if ( t > 262144 ) t = 262144;
@@ -4307,6 +4457,8 @@ bool CMyPreferences::HasChanged() {
 	if ( !changed && GetDlgItemInt( IDC_CHIP_FORCE, NULL, FALSE ) != cfg_autochip_size_force ) changed = true;
 	if ( !changed && GetDlgItemInt( IDC_CHIP_SCAN, NULL, FALSE ) != cfg_autochip_size_scan ) changed = true;
 	if ( !changed && GetDlgItemInt( IDC_CHIP_SCAN_THRESHOLD, NULL, FALSE ) != cfg_autochip_scan_threshold ) changed = true;
+	if ( !changed && SendDlgItemMessage( IDC_PLAYPTMOD, BM_GETCHECK ) != cfg_playptmod ) changed = true;
+	if ( !changed && SendDlgItemMessage( IDC_PLAYPTMOD_EXRANGE, BM_GETCHECK ) != cfg_playptmod_exrange ) changed = true;
 	if ( !changed && GetDlgItemInt( IDC_CACHE_SIZE, NULL, FALSE ) != cfg_cache_size ) changed = true;
 	if ( !changed )
 	{

@@ -12,12 +12,15 @@ extern "C" {
 #include "internal/it.h"
 }
 
+#include "duh_ptmod.h"
+#include <playptmod.h>
+
 critical_section           lock;
 
 class monitor_dialog *     dialog           = 0;
 
 DUMB_IT_SIGDATA const*     song_data        = 0;
-DUMB_IT_SIGRENDERER *      song_renderer    = 0;
+DUH_SIGRENDERER *          song_renderer    = 0;
 
 bool                       changed_info     = false;
 pfc::string8               path;
@@ -57,16 +60,32 @@ static void initialize_channels()
 
 static void mute_channels( t_uint64 mask )
 {
+	DUMB_IT_SIGRENDERER * itsr;
+	void * ptsr;
 	if ( song_renderer )
-	for ( int channel = 0; channel < DUMB_IT_N_CHANNELS; channel++ )
 	{
-		t_uint64 current_mask = t_uint64(1) << channel;
-		int muted = !!(mask & current_mask);
-		dumb_it_sr_set_channel_muted( song_renderer, channel, muted );
+		if ( ptsr = duh_get_playptmod_sigrenderer( song_renderer ) )
+		{
+			for ( int channel = 0; channel < 32; channel++ )
+			{
+				t_uint64 current_mask = t_uint64(1) << channel;
+				int muted = !!(mask & current_mask);
+				playptmod_Mute( ptsr, channel, muted );
+			}
+		}
+		else if ( itsr = duh_get_it_sigrenderer( song_renderer ) )
+		{
+			for ( int channel = 0; channel < DUMB_IT_N_CHANNELS; channel++ )
+			{
+				t_uint64 current_mask = t_uint64(1) << channel;
+				int muted = !!(mask & current_mask);
+				dumb_it_sr_set_channel_muted( itsr, channel, muted );
+			}
+		}
 	}
 }
 
-void monitor_start( DUMB_IT_SIGDATA * p_sigdata, DUMB_IT_SIGRENDERER * p_sigrenderer, const char * p_path )
+void monitor_start( DUMB_IT_SIGDATA * p_sigdata, DUH_SIGRENDERER * p_sigrenderer, const char * p_path )
 {
 	insync( lock );
 
@@ -84,7 +103,7 @@ void monitor_start( DUMB_IT_SIGDATA * p_sigdata, DUMB_IT_SIGRENDERER * p_sigrend
 	}
 }
 
-void monitor_update( DUMB_IT_SIGRENDERER * p_sigrenderer )
+void monitor_update( DUH_SIGRENDERER * p_sigrenderer )
 {
 	insync( lock );
 
@@ -102,7 +121,7 @@ void monitor_update( DUMB_IT_SIGRENDERER * p_sigrenderer )
 	}
 }
 
-void monitor_stop( const DUMB_IT_SIGRENDERER * p_sigrenderer )
+void monitor_stop( const DUH_SIGRENDERER * p_sigrenderer )
 {
 	insync( lock );
 
