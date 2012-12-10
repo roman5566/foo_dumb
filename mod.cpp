@@ -1,7 +1,12 @@
-#define MYVERSION "0.9.9.68"
+#define MYVERSION "0.9.9.69"
 
 /*
 	changelog
+
+2012-12-10 05:57 UTC - kode54
+- Fixed MOD pattern count calculation in weird cases where the last sample is
+  missing four bytes
+- Version is now 0.9.9.69
 
 2012-12-10 03:48 UTC - kode54
 - Implemented support for 8bitbubsy's playptmod for MOD and MTM files
