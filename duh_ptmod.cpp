@@ -73,7 +73,7 @@ void *duh_get_playptmod_sigrenderer(DUH_SIGRENDERER *sigrenderer)
 	return duh_get_raw_sigrenderer(sigrenderer, SIGTYPE_PTMOD);
 }
 
-DUH_SIGRENDERER * playptmod_start_at_order( DUH *duh, int startorder, int sample_rate )
+DUH_SIGRENDERER * playptmod_start_at_order( DUH *duh, int startorder, int sample_rate, int pattern_counting )
 {
 	void * vsigdata = duh_get_playptmod_sigdata( duh );
 	if ( !vsigdata ) return NULL;
@@ -83,6 +83,8 @@ DUH_SIGRENDERER * playptmod_start_at_order( DUH *duh, int startorder, int sample
 
 	void * sigrenderer = playptmod_Create( sample_rate );
 	if ( !sigrenderer ) return NULL;
+
+	playptmod_Config( sigrenderer, PTMOD_OPTION_PATTERN_COUNT, pattern_counting );
 
 	if ( !playptmod_LoadMem( sigrenderer, data, size ) )
 	{
@@ -104,7 +106,7 @@ sigrenderer_t *playptmod_start_sigrenderer(
 {
 	if ( n_channels != 2 || pos != 0 ) return NULL;
 
-	return playptmod_start_at_order( duh, 0, 44100 );
+	return playptmod_start_at_order( duh, 0, 44100, 0 );
 }
 
 void playptmod_set_sigparam(

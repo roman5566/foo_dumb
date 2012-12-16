@@ -1,7 +1,12 @@
-#define MYVERSION "0.9.9.73"
+#define MYVERSION "0.9.9.74"
 
 /*
 	changelog
+
+2012-12-16 06:40 UTC - kode54
+- Changed pattern counting back to the way it was before and made the new
+  style an advanced configuration setting
+- Version is now 0.9.9.74
 
 2012-12-10 21:28 UTC - kode54
 - Replaced playptmod BLEP functions with Shay Green's blip_buf.c
@@ -1128,6 +1133,12 @@ static const GUID guid_cfg_playptmod =
 // {DC626271-D904-41D6-B0D2-4F3EA44F19BC}
 static const GUID guid_cfg_playptmod_exrange = 
 { 0xdc626271, 0xd904, 0x41d6, { 0xb0, 0xd2, 0x4f, 0x3e, 0xa4, 0x4f, 0x19, 0xbc } };
+// {2B217949-8B77-4400-9A6F-CA76CD44D398}
+static const GUID guid_cfg_dumb_parent = 
+{ 0x2b217949, 0x8b77, 0x4400, { 0x9a, 0x6f, 0xca, 0x76, 0xcd, 0x44, 0xd3, 0x98 } };
+// {53DD1CF1-898A-4D81-B357-BCA49F704C16}
+static const GUID guid_cfg_dumb_count_patterns = 
+{ 0x53dd1cf1, 0x898a, 0x4d81, { 0xb3, 0x57, 0xbc, 0xa4, 0x9f, 0x70, 0x4c, 0x16 } };
 
 enum
 {
@@ -1174,6 +1185,9 @@ static cfg_int cfg_cache_size(guid_cfg_cache_size, default_cfg_cache_size);
 
 static cfg_int cfg_playptmod(guid_cfg_playptmod, default_cfg_playptmod);
 static cfg_int cfg_playptmod_exrange(guid_cfg_playptmod_exrange, default_cfg_playptmod_exrange);
+
+advconfig_branch_factory cfg_dumb_parent("DUMB Module Decoder", guid_cfg_dumb_parent, advconfig_branch::guid_branch_playback, 0);
+advconfig_checkbox_factory cfg_dumb_count_patterns("MOD - Count patterns from the order list", guid_cfg_dumb_count_patterns, guid_cfg_dumb_parent, 0, true);
 
 extern "C" void init_cubic(void);
 
@@ -2230,7 +2244,7 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 	{
 		is_dos = false;
 		memdata.offset = 0;
-		duh = dumb_read_mod_quick(f, ( ! stricmp( ext, exts[ 0 ] ) || ! stricmp( ext, exts[ 1 ] ) ) ? 0 : 1 );
+		duh = dumb_read_mod_quick(f, ( cfg_dumb_count_patterns.get() ? 2 : 0 ) + ( ( ! stricmp( ext, exts[ 0 ] ) || ! stricmp( ext, exts[ 1 ] ) ) ? 0 : 1 ) );
 		if ( duh && is_vblank )
 		{
 			DUMB_IT_SIGDATA * itsd = duh_get_it_sigdata( duh );
@@ -3701,7 +3715,9 @@ private:
 			if ( !duh_get_playptmod_sigdata( duh ) &&
 				duh_read_playptmod( duh, buffer.get_ptr(), buffer.get_size() ) ) return false;
 
-			sr = playptmod_start_at_order( duh, start_order, srate );
+			/* The pattern counting option must be sent after
+			   creating the player and before loading the module */
+			sr = playptmod_start_at_order( duh, start_order, srate, cfg_dumb_count_patterns.get() ? 1 : 0 );
 			if ( sr )
 			{
 				duh_sigrenderer_set_sigparam( sr, PTMOD_OPTION_CLAMP_PERIODS, !cfg_playptmod_exrange );
