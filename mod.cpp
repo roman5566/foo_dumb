@@ -3,7 +3,7 @@
 /*
 	changelog
 
-2012-12-16 06:40 UTC - kode54
+2012-12-16 06:53 UTC - kode54
 - Changed pattern counting back to the way it was before and made the new
   style an advanced configuration setting
 - Version is now 0.9.9.74
