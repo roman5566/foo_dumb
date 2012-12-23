@@ -1,7 +1,16 @@
-#define MYVERSION "0.9.9.74"
+#define MYVERSION "0.9.9.75"
 
 /*
 	changelog
+
+2012-12-23 21:34 UTC - kode54
+- Fixed envelope handling, fixes ko0x_-_minus1year.it and ko0x_-_parliamentZwei.it,
+  at least for the first loop through
+- Rewrote IT reader to use a memory buffer to handle weird file offset cases,
+  fixes trough_-_8a-gobbl.it
+- Implemented minimal Open/MPT extension reading for IT format, currently only
+  supports extended tempos
+- Version is now 0.9.9.75
 
 2012-12-16 06:53 UTC - kode54
 - Changed pattern counting back to the way it was before and made the new
