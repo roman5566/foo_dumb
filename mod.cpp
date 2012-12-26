@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.75"
+#define MYVERSION "0.9.9.76"
 
 /*
 	changelog
+
+2012-12-26 21:25 UTC - kode54
+- Fixed STM speed handling
+- Version is now 0.9.9.76
 
 2012-12-23 21:34 UTC - kode54
 - Fixed envelope handling, fixes ko0x_-_minus1year.it and ko0x_-_parliamentZwei.it,
@@ -4041,7 +4045,10 @@ public:
 						if (dyn_speed != itsr->speed)
 						{
 							dyn_speed = itsr->speed;
-							p_out.info_set_int(field_dyn_speed, dyn_speed);
+							if (itsd->flags & IT_WAS_AN_STM)
+								p_out.info_set(field_dyn_speed, pfc::format_float( (double)dyn_speed / 16.0, 0, 3 ));
+							else
+								p_out.info_set_int(field_dyn_speed, dyn_speed);
 							ret = true;
 						}
 						if (dyn_tempo != itsr->tempo)
