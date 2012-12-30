@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.77"
+#define MYVERSION "0.9.9.78"
 
 /*
 	changelog
+
+2012-12-30 19:00 UTC - kode54
+- Fixed MOD pattern counting in default mode
+- Version is now 0.9.9.78
 
 2012-12-30 02:04 UTC - kode54
 - Fixed portamento up effect when NNA channels are active
@@ -2261,7 +2265,7 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 	{
 		is_dos = false;
 		memdata.offset = 0;
-		duh = dumb_read_mod_quick(f, ( cfg_dumb_count_patterns.get() ? 2 : 0 ) + ( ( ! stricmp( ext, exts[ 0 ] ) || ! stricmp( ext, exts[ 1 ] ) ) ? 0 : 1 ) );
+		duh = dumb_read_mod_quick(f, ( cfg_dumb_count_patterns.get() ? 0 : 2 ) + ( ( ! stricmp( ext, exts[ 0 ] ) || ! stricmp( ext, exts[ 1 ] ) ) ? 0 : 1 ) );
 		if ( duh && is_vblank )
 		{
 			DUMB_IT_SIGDATA * itsd = duh_get_it_sigdata( duh );
