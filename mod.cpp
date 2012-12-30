@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.76"
+#define MYVERSION "0.9.9.77"
 
 /*
 	changelog
+
+2012-12-30 02:04 UTC - kode54
+- Fixed portamento up effect when NNA channels are active
+- Version is now 0.9.9.77
 
 2012-12-26 21:25 UTC - kode54
 - Fixed STM speed handling
