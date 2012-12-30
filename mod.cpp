@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.78"
+#define MYVERSION "0.9.9.79"
 
 /*
 	changelog
+
+2012-12-30 19:16 UTC - kode54
+- Fixed playptmod options activating the apply button
+- Version is now 0.9.9.79
 
 2012-12-30 19:00 UTC - kode54
 - Fixed MOD pattern counting in default mode
@@ -4273,6 +4277,8 @@ public:
 		COMMAND_HANDLER_EX(IDC_CHIP_FORCE, EN_CHANGE, OnEditChange)
 		COMMAND_HANDLER_EX(IDC_CHIP_SCAN, EN_CHANGE, OnEditChange)
 		COMMAND_HANDLER_EX(IDC_CHIP_SCAN_THRESHOLD, EN_CHANGE, OnEditChange)
+		COMMAND_HANDLER_EX(IDC_PLAYPTMOD, BN_CLICKED, OnButtonClick)
+		COMMAND_HANDLER_EX(IDC_PLAYPTMOD_EXRANGE, BN_CLICKED, OnButtonClick)
 	END_MSG_MAP()
 private:
 	BOOL OnInitDialog(CWindow, LPARAM);
