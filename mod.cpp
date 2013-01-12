@@ -3,10 +3,11 @@
 /*
 	changelog
 
-2013-01-12 04:50 UTC - kode54
+2013-01-12 04:59 UTC - kode54
 - Implemented FIR resampling
 - Implemented LPC sample extension, in place of sample end ramping
 - Moved IT filter implementation back into the DUMB library
+- Reset dynamic track information variables on seek
 - Version is now 0.9.9.80
 
 2012-12-30 19:16 UTC - kode54
@@ -3729,6 +3730,10 @@ retry:
 	void decode_seek( double p_seconds, abort_callback & p_abort )
 	{
 		first_block = true;
+
+		dyn_order = dyn_row = dyn_speed = dyn_tempo = dyn_channels = -1;
+		dyn_pattern = -1;
+		dyn_max_channels = 0;
 
 		long from_pos = duh_sigrenderer_get_position( sr );
 		eof = false;
