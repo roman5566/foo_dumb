@@ -1,7 +1,13 @@
-#define MYVERSION "0.9.9.79"
+#define MYVERSION "0.9.9.80"
 
 /*
 	changelog
+
+2013-01-12 04:50 UTC - kode54
+- Implemented FIR resampling
+- Implemented LPC sample extension, in place of sample end ramping
+- Moved IT filter implementation back into the DUMB library
+- Version is now 0.9.9.80
 
 2012-12-30 19:16 UTC - kode54
 - Fixed playptmod options activating the apply button
@@ -1216,6 +1222,8 @@ advconfig_checkbox_factory cfg_dumb_count_patterns("MOD - Count patterns from th
 
 extern "C" void init_cubic(void);
 
+extern void init_sse();
+
 class init_stuff
 {
 public:
@@ -1223,6 +1231,7 @@ public:
 	{
 		dumb_it_max_to_mix = DUMB_IT_TOTAL_CHANNELS;
 		init_cubic();
+		init_sse();
 #ifndef NDEBUG
 		_CrtSetDbgFlag( _CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_LEAK_CHECK_DF | _CrtSetDbgFlag( _CRTDBG_REPORT_FLAG ) );
 #endif
@@ -2279,143 +2288,6 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 	}
 
 	dumbfile_close(f);
-
-	// XXX test
-	if (duh)
-	{
-		int ramp_mode = cfg_volramp;
-		if (ramp_mode)
-		{
-			DUMB_IT_SIGDATA * itsd = duh_get_it_sigdata(duh);
-			if (itsd)
-			{
-				if (ramp_mode > 2)
-				{
-					if ( ( itsd->flags & ( IT_WAS_AN_XM | IT_WAS_A_MOD ) ) == IT_WAS_AN_XM )
-						ramp_mode = 2;
-					else
-						ramp_mode = 1;
-				}
-				for (int i = 0, j = itsd->n_samples; i < j; i++)
-				{
-					IT_SAMPLE * sample = &itsd->sample[i];
-					if ( sample->flags & IT_SAMPLE_EXISTS && !( sample->flags & IT_SAMPLE_LOOP ) )
-					{
-						double rate = 1. / double( sample->C5_speed );
-						double length = double( sample->length ) * rate;
-						if ( sample->flags & IT_SAMPLE_SUS_LOOP ) length -= double( sample->sus_loop_end ) * rate;
-						if ( length >= .001 )
-						{
-							int k, l = sample->length;
-							if ( ( ramp_mode == 1 || length < .1 ) && ( sample->length > (sample->flags & IT_SAMPLE_16BIT ? 64 : 32) ) && ( ( rate * 16. ) < .01 ) )
-							{
-								if (sample->flags & IT_SAMPLE_16BIT)
-								{
-									k = l - 15;
-									unsigned step = 1;
-									if ( sample->flags & IT_SAMPLE_SUS_LOOP && k < sample->sus_loop_end )
-									{
-										k = sample->sus_loop_end;
-										step = 15 / (sample->length - k);
-									}
-									signed short * data = (signed short *) sample->data;
-									if (sample->flags & IT_SAMPLE_STEREO)
-									{
-										for (int shift = 1; k < l; k++, shift += step)
-										{
-											data [k * 2] >>= shift;
-											data [k * 2 + 1] >>= shift;
-										}
-									}
-									else
-									{
-										for (int shift = 1; k < l; k++, shift += step)
-										{
-											data [k] >>= shift;
-										}
-									}
-								}
-								else
-								{
-									k = l - 7;
-									unsigned step = 1;
-									if ( sample->flags & IT_SAMPLE_SUS_LOOP && k < sample->sus_loop_end )
-									{
-										k = sample->sus_loop_end;
-										step = 7 / (sample->length - k);
-									}
-									signed char * data = (signed char *) sample->data;
-									if (sample->flags & IT_SAMPLE_STEREO)
-									{
-										for (int shift = 1; k < l; k++, shift += step)
-										{
-											data [k * 2] >>= shift;
-											data [k * 2 + 1] >>= shift;
-										}
-									}
-									else
-									{
-										for (int shift = 1; k < l; k++, shift += step)
-										{
-											data [k] >>= shift;
-										}
-									}
-								}
-							}
-							else if ( length > .1 )
-							{
-								int m = int( .01 * double( sample->C5_speed ) + .5 );
-								k = l - m;
-								if ( sample->flags & IT_SAMPLE_SUS_LOOP && k < sample->sus_loop_end )
-								{
-									k = sample->sus_loop_end;
-									m = sample->length - k;
-								}
-								if (sample->flags & IT_SAMPLE_16BIT)
-								{
-									signed short * data = (signed short *) sample->data;
-									if (sample->flags & IT_SAMPLE_STEREO)
-									{
-										for (; k < l; k++)
-										{
-											data [k * 2] =     MulDiv( data [k * 2],     l - k, m );
-											data [k * 2 + 1] = MulDiv( data [k * 2 + 1], l - k, m );
-										}
-									}
-									else
-									{
-										for (; k < l; k++)
-										{
-											data [k] =     MulDiv( data [k],     l - k, m );
-										}
-									}
-								}
-								else
-								{
-									signed char * data = (signed char *) sample->data;
-									if (sample->flags & IT_SAMPLE_STEREO)
-									{
-										for (; k < l; k++)
-										{
-											data [k * 2] =     MulDiv( data [k * 2],     l - k, m );
-											data [k * 2 + 1] = MulDiv( data [k * 2 + 1], l - k, m );
-										}
-									}
-									else
-									{
-										for (; k < l; k++)
-										{
-											data [k] =     MulDiv( data [k],     l - k, m );
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 
 	if (duh && cfg_autochip)
 	{
@@ -4357,6 +4229,7 @@ BOOL CMyPreferences::OnInitDialog(CWindow, LPARAM) {
 	uSendMessageText(w, CB_ADDSTRING, 0, "none");
 	uSendMessageText(w, CB_ADDSTRING, 0, "linear");
 	uSendMessageText(w, CB_ADDSTRING, 0, "cubic");
+	uSendMessageText(w, CB_ADDSTRING, 0, "FIR");
 	::SendMessage(w, CB_SETCURSEL, cfg_interp, 0);
 
 	w = GetDlgItem(IDC_LOOPS);
