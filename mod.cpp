@@ -1,7 +1,11 @@
-#define MYVERSION "0.9.9.80"
+#define MYVERSION "0.9.9.81"
 
 /*
 	changelog
+
+2013-01-12 18:20 UTC - kode54
+- Added a low-pass filter to the FIR resampler
+- Version is now 0.9.9.81
 
 2013-01-12 04:59 UTC - kode54
 - Implemented FIR resampling
