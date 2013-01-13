@@ -1,7 +1,13 @@
-#define MYVERSION "0.9.9.81"
+#define MYVERSION "1.0.0"
 
 /*
 	changelog
+
+2013-01-13 00:01 UTC - kode54
+- Simplified low-pass filter
+- Removed resonance which was accidentally enabled in low-pass filter
+- Re-profiled the component
+- Version is now 1.0.0
 
 2013-01-12 18:20 UTC - kode54
 - Added a low-pass filter to the FIR resampler
