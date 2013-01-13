@@ -85,17 +85,20 @@ static void mute_channels( t_uint64 mask )
 	}
 }
 
-void monitor_start( DUMB_IT_SIGDATA * p_sigdata, DUH_SIGRENDERER * p_sigrenderer, const char * p_path )
+void monitor_start( DUMB_IT_SIGDATA * p_sigdata, DUH_SIGRENDERER * p_sigrenderer, const char * p_path, bool playback )
 {
 	insync( lock );
 
-	changed_info = true;
+	if ( playback )
+	{
+		changed_info = true;
 
-	song_data = p_sigdata;
-	song_renderer = p_sigrenderer;
-	path = p_path;
+		song_data = p_sigdata;
+		song_renderer = p_sigrenderer;
+		path = p_path;
 
-	initialize_channels();
+		initialize_channels();
+	}
 
 	if ( cfg_control_override )
 	{

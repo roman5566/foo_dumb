@@ -3,11 +3,13 @@
 /*
 	changelog
 
-2013-01-13 02:36 UTC - kode54
+2013-01-13 02:46 UTC - kode54
 - Increased precision of FIR resampler intermediate buffer to prevent
   clipping the output of the low-pass filter
 - Added silence padding to the LPC processor for samples which are too
   short to predict from
+- Fixed monitor to only reset the dialog when a track is being played
+  interactively
 - Version is now 1.0.1
 
 2013-01-13 00:01 UTC - kode54
@@ -3296,7 +3298,7 @@ class input_mod
 
 	t_filestats m_stats;
 
-	bool is_dos, is_it, first_block;
+	bool is_dos, is_it, first_block, is_playback;
 	file_info_impl * m_info;
 
 	pfc::ptr_list_t< dumb_subsong_info > m_subsong_info;
@@ -3612,7 +3614,8 @@ public:
 
 		if ( ! open2() ) throw exception_io_data();
 
-		monitor_start( duh_get_it_sigdata( duh ), sr, path );
+		is_playback = !!( p_flags & input_flag_playback );
+		monitor_start( duh_get_it_sigdata( duh ), sr, path, is_playback );
 
 		eof = false;
 		dynamic_info = !!cfg_dynamic_info;
@@ -3766,7 +3769,7 @@ retry:
 			sr = NULL;
 			limit_info.loop_count = loop_count;
 			if ( ! open2( to_pos ) ) throw exception_io_data();
-			monitor_start( duh_get_it_sigdata( duh ), sr, path );
+			monitor_start( duh_get_it_sigdata( duh ), sr, path, is_playback );
 		}
 		else while ( to_pos > from_pos && !eof )
 		{
@@ -3827,7 +3830,7 @@ private:
 						sr = NULL;
 						if ( open2() )
 						{
-							monitor_start( duh_get_it_sigdata( duh ), sr, path );
+							monitor_start( duh_get_it_sigdata( duh ), sr, path, is_playback );
 							if ( limit_info.fade )
 							{
 								fade_time_left = fade_time + written;
