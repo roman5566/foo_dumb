@@ -1,7 +1,14 @@
-#define MYVERSION "1.0.0"
+#define MYVERSION "1.0.1"
 
 /*
 	changelog
+
+2013-01-13 02:36 UTC - kode54
+- Increased precision of FIR resampler intermediate buffer to prevent
+  clipping the output of the low-pass filter
+- Added silence padding to the LPC processor for samples which are too
+  short to predict from
+- Version is now 1.0.1
 
 2013-01-13 00:01 UTC - kode54
 - Simplified low-pass filter
