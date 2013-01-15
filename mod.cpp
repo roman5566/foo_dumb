@@ -1,7 +1,12 @@
-#define MYVERSION "1.0.1"
+#define MYVERSION "1.0.2"
 
 /*
 	changelog
+
+2013-01-15 03:15 UTC - kode54
+- Implemented full seeking in DUMBFILE and rewrote several format readers
+  which badly needed seeking support
+- Version is now 1.0.2
 
 2013-01-13 02:46 UTC - kode54
 - Increased precision of FIR resampler intermediate buffer to prevent
@@ -2057,12 +2062,28 @@ static long dumbfile_mem_getnc(char * ptr, long n, void * f)
 	return max;
 }
 
+static int dumbfile_mem_seek(void * f, long n)
+{
+	dumbfile_mem_status * s = (dumbfile_mem_status *) f;
+	if ( n < 0 || n > s->size ) return -1;
+	s->offset = n;
+	return 0;
+}
+
+static long dumbfile_mem_get_size(void * f)
+{
+	dumbfile_mem_status * s = (dumbfile_mem_status *) f;
+	return s->size;
+}
+
 static DUMBFILE_SYSTEM mem_dfs = {
 	NULL, // open
 	&dumbfile_mem_skip,
 	&dumbfile_mem_getc,
 	&dumbfile_mem_getnc,
-	NULL // close
+	NULL, // close
+	&dumbfile_mem_seek,
+	&dumbfile_mem_get_size
 };
 
 struct DUMBFILE
@@ -2191,8 +2212,8 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 					// blah, type can't be trusted
 					if (!stricmp(type, "it") || !stricmp(type, "s3m") || !stricmp(type, "xm"))
 					{
-						ptr += memdata.offset = pkg.object_offset(i);
-						size = memdata.size = memdata.offset + pkg.object_size(i);
+						memdata.ptr = ptr += pkg.object_offset(i);
+						size = memdata.size = pkg.object_size(i);
 						if (size >= 4 && ptr[0] == 'I' && ptr[1] == 'M' && ptr[2] == 'P' && ptr[3] == 'M')
 						{
 							is_it = true;
@@ -2297,7 +2318,7 @@ static DUH * g_open_module(const t_uint8 * & ptr, unsigned & size, const char * 
 	if ( ! duh )
 	{
 		is_dos = false;
-		memdata.offset = 0;
+		dumbfile_seek( f, 0, DFS_SEEK_SET );
 		duh = dumb_read_mod_quick(f, ( cfg_dumb_count_patterns.get() ? 0 : 2 ) + ( ( ! stricmp( ext, exts[ 0 ] ) || ! stricmp( ext, exts[ 1 ] ) ) ? 0 : 1 ) );
 		if ( duh && is_vblank )
 		{
