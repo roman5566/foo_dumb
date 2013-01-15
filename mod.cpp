@@ -3,7 +3,7 @@
 /*
 	changelog
 
-2013-01-15 03:15 UTC - kode54
+2013-01-15 04:12 UTC - kode54
 - Implemented full seeking in DUMBFILE and rewrote several format readers
   which badly needed seeking support
 - Version is now 1.0.2
@@ -3705,7 +3705,6 @@ public:
 		/*int*/ written=0;
 
 		long samples;
-		void * ptsr;
 
 		if ( duh_get_playptmod_sigrenderer( sr ) )
 		{
