@@ -1,7 +1,11 @@
-#define MYVERSION "1.0.2"
+#define MYVERSION "1.0.3"
 
 /*
 	changelog
+
+2013-01-17 06:05 UTC - kode54
+- Implemented support for the obscure S9F sample reverse effect
+- Version is now 1.0.3
 
 2013-01-15 04:12 UTC - kode54
 - Implemented full seeking in DUMBFILE and rewrote several format readers
