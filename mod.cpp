@@ -1,7 +1,11 @@
-#define MYVERSION "1.0.3"
+#define MYVERSION "1.0.4"
 
 /*
 	changelog
+
+2013-01-18 00:26 UTC - kode54
+- Fixed XM envelope reading to gracefully handle nodes which are out of range
+- Version is now 1.0.4
 
 2013-01-17 06:05 UTC - kode54
 - Implemented support for the obscure S9F sample reverse effect
