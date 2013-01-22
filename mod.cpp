@@ -1,7 +1,11 @@
-#define MYVERSION "1.0.4"
+#define MYVERSION "1.0.5"
 
 /*
 	changelog
+
+2013-01-22 11:03 UTC - kode54
+- Fixed a serious error in the IT reader's MPT extension parser
+- Version is now 1.0.5
 
 2013-01-18 00:26 UTC - kode54
 - Fixed XM envelope reading to gracefully handle nodes which are out of range
