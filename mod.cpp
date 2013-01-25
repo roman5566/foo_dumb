@@ -1,7 +1,12 @@
-#define MYVERSION "1.0.5"
+#define MYVERSION "1.0.6"
 
 /*
 	changelog
+
+2013-01-25 00:34 UTC - kode54
+- Fixed a serious bug with playptmod when it encounters pitches which result
+  in a stopped voice
+- Version is now 1.0.6
 
 2013-01-22 11:03 UTC - kode54
 - Fixed a serious error in the IT reader's MPT extension parser
