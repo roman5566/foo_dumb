@@ -3,6 +3,11 @@
 /*
 	changelog
 
+2013-01-25 01:37 UTC - kode54
+- Ah, yeah, that should be clamping to within the extended period range if that
+  feature is turned on
+- Version is now 1.0.7
+
 2013-01-25 01:29 UTC - kode54
 - Added period range clamping to playptmod vibrato processing. Even though the
   original Protracker did not have such clamping, it could also crash
@@ -10,7 +15,6 @@
   high base pitches. Most people aren't likely to notice the clamping, but I'm
   sure people would be quick to notice if random files caused the whole player
   to crash.
-- Version is now 1.0.7
 
 2013-01-25 00:34 UTC - kode54
 - Fixed a serious bug with playptmod when it encounters pitches which result
